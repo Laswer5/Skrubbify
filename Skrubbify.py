@@ -6,9 +6,11 @@ NOTE: Static design, not guaranteed to work if standard format of receipt is cha
 
 """
 
-import csv
+import os
 import pdfplumber
 from math import ceil
+import tkinter as tk
+from tkinter import filedialog
 
 currentItemDelimiterStart = "Artikelnummer"
 currentItemDelimiterStop = "-"
@@ -174,4 +176,16 @@ def snabbgrossExport(pdfPath: str):
             file.write('\n' + x[0] + "|" + "   " + str(x[1]))
 
 
-snabbgrossExport('receipt.pdf')
+def main():
+
+    root = tk.Tk()
+    root.withdraw()
+    tk.messagebox.showinfo(title='Attention', message='Please select the receipt PDF in the pop-up window')
+
+    pdf_path = filedialog.askopenfilename()
+    snabbgrossExport(pdf_path)
+    #outputPath = 'Skrubbenpriser.txt' Not yet implemented
+
+    #os.system(r"Skrubbenpriser.txt")
+
+main()
