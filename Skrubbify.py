@@ -113,7 +113,7 @@ def snabbgrossExtract(pdfPath: str):
     return filteredItemList, filteredPriceList, filteredUnitAmountList
 
 
-items, prices, unitAmounts = snabbgrossExtract('receipt.pdf')
+#items, prices, unitAmounts = snabbgrossExtract('receipt.pdf')
 
 
 def bootleg_ceil(number):
