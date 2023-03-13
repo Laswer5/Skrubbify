@@ -1,191 +1,179 @@
-"""
-Skrubbify
-Extract unit prices from a standard snabbgross receipt to a csv file
-Author: Lukas Lindén Thöming, 2022
-NOTE: Static design, not guaranteed to work if standard format of receipt is changed.
 
 """
+* Skrubbify                                     *
+* Läser av och beräknar priser till skrubben    *
+* från ett snabbgrosskvitto.                    *
+* @Lukas LT, 2023                               *
+"""
 
-import os
-import pdfplumber
+import pdfplumber as pdf
 from math import ceil
-import tkinter as tk
-from tkinter import filedialog
 
-currentItemDelimiterStart = "Artikelnummer"
-currentItemDelimiterStop = "-"
+def read_pdf(pdf_path: str) -> str:
 
+    """
+    Reads the receipt PDF-file.
 
-def pdfExtract(filepath: str):
-    with pdfplumber.open(filepath) as pdf:
+        Parameters:
+            pdf_path: File path to the pdf, as a string.
 
-        page = pdf.pages[0]  # Get the first page of the PDF
-        text = page.extract_text()  # Extract the text from the page
+        Returns:
+            Formatted receipt data.
+    """
+    with pdf.open(pdf_path) as receipt:
+        pages = receipt.pages
+        text = ""
+        items_delim = "----------------------------------------------------------------------------------------------------"
 
-        # Very rare for two pages to be needed, not generalized for more than this.
-        if len(pdf.pages) > 1:
-            pageTwo = pdf.pages[1]
-            text = text + "\n" + pageTwo.extract_text()
+        for page in pages:
+            text = text + page.extract_text()
 
-    splitByLine = text.split("\n")
-    return splitByLine
+        delim_idx = text.index(items_delim)
+        text = text[delim_idx + len(items_delim):]
+        delim_idx = text.index(items_delim)
+        text = text[:delim_idx]
 
+        text = text[100:]
+        text = text.split('\n')
 
-def isolateItems(itemList):
-    newList = []
-    delimCount = 0
-
-    for x in itemList:
-        if x.startswith(currentItemDelimiterStart) == False and delimCount == 0:
-            continue
-        elif x.startswith(currentItemDelimiterStart) == True:
-            delimCount = 1
-        elif delimCount == 1 and x.startswith(currentItemDelimiterStop) == False:
-            newList.append(x)
-        elif x.startswith(currentItemDelimiterStop) == True:
-            break
-
-    return newList
+        return text          
 
 
-def splitLinesByStrIndex(isolatedItems, start, stop):
-    itemNames = []
+def separate_name_amount_price(pdf_text) -> tuple[str, str, str]:
 
-    for item in isolatedItems:
-        # Receipt uses constant whitespace for item names, might have to be modified if this changes.
-        itemName = item[start:stop]
-        itemNames.append(itemName)
+    """
+    Splits each string line in the receipt and returns the 
+    name, amount, and price, of each item in the receipt.
 
-    return itemNames
+        Parameters:
+            pdf_text: Parsed pdf-data
 
-# item[21:55] -- String index for item names
-# á-pris -- String index for item names: 70-76
-# Förp -- String index for amount per package - 55-58
+        Returns:
+            Correctly formatted names, amounts, and prices.
+    """
+    
+    names, amount, prices = [], [], []
 
+    for i in pdf_text:
+        names.append(i[21:55])
+        amount.append(i[55:58])
+        prices.append(i[70:76])
 
-def isolateItemNames(isolatedItems): return splitLinesByStrIndex(
-    isolatedItems, 21, 55)
+    names = names[:len(names)-1]
+    amount = amount[:len(amount)-1]
+    prices = prices[:len(prices)-1]
 
+    return names, amount, prices
 
-def isolateUnitAmountPerPackage(isolatedItems): return splitLinesByStrIndex(
-    isolatedItems, 55, 58)  # Only accounts for maximum of hundreds of units
+def convert_to_num(str_arr) -> float:
 
+    """
+    Converts string numbers to numerical value.
+    Also replaces ',' with '.' as the ceil() function does not
+    recognize ',' as the separator for this locale.
 
-def isolateUnitPrices(isolatedItems):
-    pricesList = splitLinesByStrIndex(isolatedItems, 70, 76)
-    formattedPricesList = []
-    for x in pricesList:
-        formattedPricesList.append(x.replace(',', '.'))
-    return formattedPricesList
+        Parameters:
+            str_arr: Array of string numbers.
 
+        Returns:
+            str_arr converted to float.
+    """
 
-def printLines(lines):  # Helper debug function
-    for x in range(len(lines)):
-        print(lines[x])
+    num_arr = []
+    for i in str_arr:
+        i = i.replace(',', '.')
+        num_arr.append(float(i))
+    
+    return num_arr
 
+def bootleg_ceil(number: float) -> int:
 
-def filterBestPrice(isolatedItems, isolatedPrice, isolatedUnitAmountPerPackage):
-    filteredItemList = []
-    filteredPriceList = []
-    filteredIsolatedUnitAmountPerPackageList = []
-    listLen = len(isolatedItems)
+    """
+    Rounds to closest integer, with exception for the 'Skrubben-markup'
 
-    for x in range(listLen):
-        if "Bästa pris" not in isolatedItems[x]:
-            if "Eur Pall" not in isolatedItems[x]:
-                filteredItemList.append((isolatedItems[x]))
-                filteredPriceList.append(isolatedPrice[x])
-                filteredIsolatedUnitAmountPerPackageList.append(
-                    isolatedUnitAmountPerPackage[x])
+        Parameters:
+            number: Float to round
 
-    return filteredItemList, filteredPriceList, filteredIsolatedUnitAmountPerPackageList
+        Returns:
+            Int representation of float argument
+    """
 
+    skrubben_markup = 0.85
 
-def snabbgrossExtract(pdfPath: str):
-    isolatedItems = isolateItemNames(isolateItems(pdfExtract(pdfPath)))
-    isolatedUnitPrices = isolateUnitPrices(isolateItems(pdfExtract(pdfPath)))
-    isolatedUnitAmountsPerPackage = isolateUnitAmountPerPackage(
-        isolateItems(pdfExtract(pdfPath)))
-
-    filteredItemList, filteredPriceList, filteredUnitAmountList = filterBestPrice(
-        isolatedItems, isolatedUnitPrices, isolatedUnitAmountsPerPackage)
-
-    return filteredItemList, filteredPriceList, filteredUnitAmountList
-
-
-#items, prices, unitAmounts = snabbgrossExtract('receipt.pdf')
-
-
-def bootleg_ceil(number):
-    if (ceil(number) - number) > 0.85:
+    if (ceil(number) - number) > skrubben_markup:
         return round(number)
     else:
         return ceil(number)
 
 
-def calculatePricesReturnAsLists(itemNames: list, itemPrices: list, isolatedUnitAmountPerPackage: list):
-    listLength = len(itemNames)
-    VAT = 1.12  # 12% VAT for foodstuffs
-    assert (listLength != 0)
-    assert (listLength == len(itemPrices))
-    assert (listLength == len(isolatedUnitAmountPerPackage))
+def snabbgross_extract(pdf_path: str) -> tuple[str, int]:
 
-    ItemAndPriceTupleList = []
+    """
+    Calculates prices for each snabbgross items using the functions
+    above.
+
+        Parameters:
+            pdf_path: File path to receipt as a string
+
+        Returns: 
+            item_names: Array of item names.
+            item_prices: Array of item prices.
+    """
+
+    pdf_data = read_pdf(pdf_path) 
+    names, amounts, prices = separate_name_amount_price(pdf_data)
+    amounts, prices = convert_to_num(amounts), convert_to_num(prices)
+
+    calc_name, calc_price = [], []
 
     i = 0
-    while i < listLength:
-        if i+1 < listLength and "PANT" in itemNames[i + 1]:
-            pantToBeAdded = float(itemPrices[i + 1])
-            itemName = itemNames[i]
-            itemPrice = float(itemPrices[i])
-            itemAmountPerPackage = int(isolatedUnitAmountPerPackage[i])
-
-            pricePerUnit = bootleg_ceil(
-                ((itemPrice + pantToBeAdded) * VAT) / itemAmountPerPackage)
-
-            ItemAndPriceTupleList.append([itemName, pricePerUnit])
-            i = i+1
+    pant_bool = 0
+    while i < len(names):
+        curr_price = 0
+        if "Bästa pris" in names[i]:
+            continue
         else:
-            itemName = itemNames[i]
-            itemPrice = float(itemPrices[i])
-            itemAmountPerPackage = int(isolatedUnitAmountPerPackage[i])
-            pricePerUnit = bootleg_ceil(
-                (itemPrice * 1.12) / itemAmountPerPackage)
+            if i+1 < len(names) and "PANT" in names[i+1]:
+                curr_price = curr_price + prices[i+1]
+                pant_bool = 1
 
-            ItemAndPriceTupleList.append([itemName, pricePerUnit])
+            curr_price = curr_price + prices[i]
+            sale_price = bootleg_ceil(curr_price / amounts[i])
 
-        i = i+1
+            calc_name.append(names[i])
+            calc_price.append(sale_price)
 
-    return ItemAndPriceTupleList
+            if pant_bool == 0:
+                i = i + 1
+            elif pant_bool == 1:
+                i = i + 2
+                pant_bool = 0
 
+    return calc_name, calc_price
+        
+def output_to_csv(item_names: str, item_prices: int):
 
-def snabbgrossCalculate(pdfPath: str):
-    items, prices, unitAmounts = snabbgrossExtract(pdfPath)
-    calculatedList = calculatePricesReturnAsLists(items, prices, unitAmounts)
+    """
+    Writes item name and price to a .csv file
 
-    return calculatedList
-
-
-def snabbgrossExport(pdfPath: str):
-
-    priceList = snabbgrossCalculate(pdfPath)
+        Parameters:
+            item_names: Array of item names as strings
+            item_prices: Array of item prices as ints.
+    """
 
     with open('Skrubbenpriser.txt', 'w', encoding='utf-8') as file:
-        file.write("Varunamn                          |   Pris inkl. moms & pant (SEK)")
-        for x in priceList:
-            file.write('\n' + x[0] + "|" + "   " + str(x[1]))
-
+        file.write(
+            "Varunamn                          |   Pris inkl. moms & pant (SEK)")
+        for x in range(len(item_names)):
+            file.write('\n' + item_names[x] + "|" + "   " + str(item_prices[x]))
 
 def main():
 
-    root = tk.Tk()
-    root.withdraw()
-    tk.messagebox.showinfo(title='Attention', message='Please select the receipt PDF in the pop-up window')
+    print('Please input receipt file path:')
+    print('(If in the same folder as this script, simply enter file name)')
+    file_path = input()
 
-    pdf_path = filedialog.askopenfilename()
-    snabbgrossExport(pdf_path)
-    #outputPath = 'Skrubbenpriser.txt' Not yet implemented
-
-    #os.system(r"Skrubbenpriser.txt")
+    names, prices = snabbgross_extract(file_path)
+    output_to_csv(names, prices)
 
 main()
