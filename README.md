@@ -3,7 +3,6 @@ Enkelt skript för att beräkna skrubbenpriserna från ett snabbgrosskvitto.
 
 # PRE-REQUISITES
 'pip3 install pdfplumber'
-'pip3 install tkinter'
 
 # Instruktioner
 1. För att köra programmet, öppna först kommandotolken.
