@@ -32,11 +32,20 @@ def read_pdf(pdf_path: str) -> str:
 
         return text          
 
-def print_by_lines(str_arr):
-    for i in str_arr:
-        print(i)
 
-def separate_name_amount_price(pdf_text):
+def separate_name_amount_price(pdf_text) -> tuple[str, str, str]:
+
+    """
+    Splits each string line in the receipt and returns the 
+    name, amount, and price, of each item in the receipt.
+
+        Parameters:
+            pdf_text: Parsed pdf-data
+
+        Returns:
+            Correctly formatted names, amounts, and prices.
+    """
+    
     names, amount, prices = [], [], []
 
     for i in pdf_text:
@@ -50,7 +59,20 @@ def separate_name_amount_price(pdf_text):
 
     return names, amount, prices
 
-def convert_to_num(str_arr):
+def convert_to_num(str_arr) -> float:
+
+    """
+    Converts string numbers to numerical value.
+    Also replaces ',' with '.' as the ceil() function does not
+    recognize ',' as the separator for this locale.
+
+        Parameters:
+            str_arr: Array of string numbers.
+
+        Returns:
+            str_arr converted to float.
+    """
+
     num_arr = []
     for i in str_arr:
         i = i.replace(',', '.')
@@ -59,13 +81,39 @@ def convert_to_num(str_arr):
     return num_arr
 
 def bootleg_ceil(number: float) -> int:
-    if (ceil(number) - number) > 0.85:
+
+    """
+    Rounds to closest integer, with exception for the 'Skrubben-markup'
+
+        Parameters:
+            number: Float to round
+
+        Returns:
+            Int representation of float argument
+    """
+
+    skrubben_markup = 0.85
+
+    if (ceil(number) - number) > skrubben_markup:
         return round(number)
     else:
         return ceil(number)
 
 
-def snabbgross_extract(pdf_path: str):
+def snabbgross_extract(pdf_path: str) -> tuple[str, int]:
+
+    """
+    Calculates prices for each snabbgross items using the functions
+    above.
+
+        Parameters:
+            pdf_path: File path to receipt as a string
+
+        Returns: 
+            item_names: Array of item names.
+            item_prices: Array of item prices.
+    """
+
     pdf_data = read_pdf(pdf_path) 
     names, amounts, prices = separate_name_amount_price(pdf_data)
     amounts, prices = convert_to_num(amounts), convert_to_num(prices)
@@ -98,14 +146,28 @@ def snabbgross_extract(pdf_path: str):
     return calc_name, calc_price
         
 def output_to_csv(item_names: str, item_prices: int):
+
+    """
+    Writes item name and price to a .csv file
+
+        Parameters:
+            item_names: Array of item names as strings
+            item_prices: Array of item prices as ints.
+    """
+
     with open('Skrubbenpriser.txt', 'w', encoding='utf-8') as file:
         file.write(
             "Varunamn                          |   Pris inkl. moms & pant (SEK)")
         for x in range(len(item_names)):
             file.write('\n' + item_names[x] + "|" + "   " + str(item_prices[x]))
 
+def main():
 
+    print('Please input receipt file path:')
+    print('(If in the same folder as this script, simply enter file name)')
+    file_path = input()
 
-names, prices = snabbgross_extract('Kvitto.pdf')
+    names, prices = snabbgross_extract(file_path)
+    output_to_csv(names, prices)
 
-output_to_csv(names, prices)
+main()
