@@ -1,7 +1,6 @@
 
 import pdfplumber as pdf
 from math import ceil
-import os
 
 def read_pdf(pdf_path: str) -> str:
 
