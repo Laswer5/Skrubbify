@@ -26,7 +26,7 @@ def read_pdf(pdf_path: str) -> str:
         items_delim = "----------------------------------------------------------------------------------------------------"
 
         for page in pages:
-            text = text + page.extract_text()
+            text = text + page.extract_text_simple(x_tolerance=1, y_tolerance=1)
 
         delim_idx = text.index(items_delim)
         text = text[delim_idx + len(items_delim):]
@@ -50,6 +50,10 @@ def separate_name_amount_price(pdf_text) -> tuple[str, str, str]:
 
         Returns:
             Correctly formatted names, amounts, and prices.
+
+        @NOTE: Uses hardcoded indexing from values specific to the
+        PDF-reading parameters set in read_pdf(), might be subject
+        to change if PDF structure changes.
     """
     
     names, amount, prices = [], [], []
@@ -59,7 +63,7 @@ def separate_name_amount_price(pdf_text) -> tuple[str, str, str]:
         amount.append(i[55:58])
         prices.append(i[70:76])
 
-    names = names[:len(names)-1]
+    names = names[:len(names)-1] #Last index ends up empty, filter.
     amount = amount[:len(amount)-1]
     prices = prices[:len(prices)-1]
 
@@ -89,7 +93,8 @@ def convert_to_num(str_arr) -> float:
 def bootleg_ceil(number: float) -> int:
 
     """
-    Rounds to closest integer, with exception for the 'Skrubben-markup'
+    Rounds to closest integer, with weighting by the 'skrubben-bankroll' variable,
+    that deals with prices very close but larger than the nearest integer.
 
         Parameters:
             number: Float to round
@@ -98,9 +103,9 @@ def bootleg_ceil(number: float) -> int:
             Int representation of float argument
     """
 
-    skrubben_markup = 0.85
+    skrubben_bankroll = 0.85
 
-    if (ceil(number) - number) > skrubben_markup:
+    if (ceil(number) - number) > skrubben_bankroll:
         return round(number)
     else:
         return ceil(number)
