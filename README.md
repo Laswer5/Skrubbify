@@ -2,7 +2,7 @@
 Simple program to calculate the prices in *Skrubben* from a Snabbgross PDF-receipt.
 
 # PRE-REQUISITES
-Python3.7 or higher
+Python3.7 or higher  
 Python module 'pdfplumber'
 
 # Instructions
