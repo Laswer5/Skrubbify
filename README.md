@@ -1,12 +1,13 @@
 # Skrubbify
-Enkelt skript för att beräkna skrubbenpriserna från ett snabbgrosskvitto.
+Simple program to calculate the prices in *Skrubben* from a Snabbgross PDF-receipt.
 
 # PRE-REQUISITES
-'pip3 install pdfplumber'
+Python3.7 or higher
+Python module 'pdfplumber'
 
-# Instruktioner
-1. För att köra programmet, öppna först kommandotolken.
-2. Sätt din working directory till mappen där 'Skrubbify.py' är placerad.
-3. Kör kommandot 'python3 Skrubbify.py' eller motsvarande för att köra programmet med python3 på din plattform.
-4. Följ instruktionerna i pop up-rutan för att välja kvittofil.
-5. Programmet körs, och en .txt-fil med de beräknade priserna kommer att skapas i samma mapp som 'Skrubbify.py' är placerad i.
+# Instructions
+1. Set your working directory to the directory where *Skrubbify.py* is located.
+2. Run 'python3 Skrubbify.py'
+3. A prompt will appear, simply enter the file path to the PDF receipt.
+4. The calculated prices will be placed in *Skrubbenpriser.txt* in the same
+directory as the *Skrubbify.py*-file.
