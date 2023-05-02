@@ -9,8 +9,8 @@
 import pdfplumber as pdf
 from math import ceil
 
-def read_pdf(pdf_path: str) -> str:
 
+def read_pdf(pdf_path: str) -> str:
     """
     Reads the receipt PDF-file.
 
@@ -22,11 +22,11 @@ def read_pdf(pdf_path: str) -> str:
     """
     with pdf.open(pdf_path) as receipt:
         pages = receipt.pages
+        page = pages[0]
         text = ""
         items_delim = "----------------------------------------------------------------------------------------------------"
 
-        for page in pages:
-            text = text + page.extract_text_simple(x_tolerance=1, y_tolerance=1)
+        text = page.extract_text_simple(x_tolerance=1, y_tolerance=1)
 
         delim_idx = text.index(items_delim)
         text = text[delim_idx + len(items_delim):]
@@ -36,11 +36,10 @@ def read_pdf(pdf_path: str) -> str:
         text = text[100:]
         text = text.split('\n')
 
-        return text          
+        return text
 
 
 def separate_name_amount_price(pdf_text) -> tuple[str, str, str]:
-
     """
     Splits each string line in the receipt and returns the 
     name, amount, and price, of each item in the receipt.
@@ -55,7 +54,7 @@ def separate_name_amount_price(pdf_text) -> tuple[str, str, str]:
         PDF-reading parameters set in read_pdf(), might be subject
         to change if PDF structure changes.
     """
-    
+
     names, amount, prices = [], [], []
 
     for i in pdf_text:
@@ -63,14 +62,14 @@ def separate_name_amount_price(pdf_text) -> tuple[str, str, str]:
         amount.append(i[55:58])
         prices.append(i[70:76])
 
-    names = names[:len(names)-1] #Last index ends up empty, filter.
+    names = names[:len(names)-1]  # Last index ends up empty, filter.
     amount = amount[:len(amount)-1]
     prices = prices[:len(prices)-1]
 
     return names, amount, prices
 
-def convert_to_num(str_arr) -> float:
 
+def convert_to_num(str_arr) -> float:
     """
     Converts string numbers to numerical value.
     Also replaces ',' with '.' as the ceil() function does not
@@ -86,12 +85,16 @@ def convert_to_num(str_arr) -> float:
     num_arr = []
     for i in str_arr:
         i = i.replace(',', '.')
-        num_arr.append(float(i))
-    
+
+        if i != '':
+            num_arr.append(float(i))
+        else:
+            num_arr.append(None)
+
     return num_arr
 
-def bootleg_ceil(number: float) -> int:
 
+def bootleg_ceil(number: float) -> int:
     """
     Rounds to closest integer, with weighting by the 'skrubben-bankroll' variable,
     that deals with prices very close but larger than the nearest integer.
@@ -103,7 +106,7 @@ def bootleg_ceil(number: float) -> int:
             Int representation of float argument
     """
 
-    skrubben_bankroll = 0.85
+    skrubben_bankroll = 0.95
 
     if (ceil(number) - number) > skrubben_bankroll:
         return round(number)
@@ -111,8 +114,25 @@ def bootleg_ceil(number: float) -> int:
         return ceil(number)
 
 
-def snabbgross_extract(pdf_path: str) -> tuple[str, int]:
+def filter_special_prices(pdf_data):
+    """
+    Filters out the empty 'Bästa pris' row from names, amounts, and prices.
 
+        Parameters:
+            pdf_data: Parsed pdf-data.
+        
+        Returns: filtered lists.
+    """
+
+    names, amounts, prices = separate_name_amount_price(pdf_data)
+
+    filtered_names, filtered_amounts, filtered_prices = zip(
+        *[(a, b, c) for a, b, c in zip(names, amounts, prices) if 'Bästa pris' not in a])
+
+    return filtered_names, filtered_amounts, filtered_prices
+
+
+def snabbgross_extract(pdf_path: str) -> tuple[str, int]:
     """
     Calculates prices for each snabbgross items using the functions
     above.
@@ -125,39 +145,31 @@ def snabbgross_extract(pdf_path: str) -> tuple[str, int]:
             item_prices: Array of item prices.
     """
 
-    pdf_data = read_pdf(pdf_path) 
-    names, amounts, prices = separate_name_amount_price(pdf_data)
+    pdf_data = read_pdf(pdf_path)
+    names, amounts, prices = filter_special_prices(pdf_data)
     amounts, prices = convert_to_num(amounts), convert_to_num(prices)
 
     calc_name, calc_price = [], []
 
     i = 0
-    pant_bool = 0
     while i < len(names):
-        curr_price = 0
-        if "Bästa pris" in names[i]:
-            continue
+
+        calc_name.append(names[i])
+
+        price = bootleg_ceil(prices[i] / amounts[i])
+
+        if i + 1 < len(names) and 'PANT' in names[i+1]:
+            price = price + 1
+            i = i + 2
         else:
-            if i+1 < len(names) and "PANT" in names[i+1]:
-                curr_price = curr_price + prices[i+1]
-                pant_bool = 1
+            i = i + 1
 
-            curr_price = curr_price + prices[i]
-            sale_price = bootleg_ceil(curr_price / amounts[i])
-
-            calc_name.append(names[i])
-            calc_price.append(sale_price)
-
-            if pant_bool == 0:
-                i = i + 1
-            elif pant_bool == 1:
-                i = i + 2
-                pant_bool = 0
+        calc_price.append(price)
 
     return calc_name, calc_price
-        
-def output_to_csv(item_names: str, item_prices: int):
 
+
+def output_to_csv(item_names: str, item_prices: int):
     """
     Writes item name and price to a .csv file
 
@@ -170,15 +182,27 @@ def output_to_csv(item_names: str, item_prices: int):
         file.write(
             "Varunamn                          |   Pris inkl. moms & pant (SEK)")
         for x in range(len(item_names)):
-            file.write('\n' + item_names[x] + "|" + "   " + str(item_prices[x]))
+            file.write('\n' + item_names[x] +
+                       "|" + "   " + str(item_prices[x]))
+
+
+def print_red(text: str):
+    red_color = "\033[31m"  # ANSI escape code for red text
+    reset_color = "\033[0m"  # ANSI escape code for resetting the color
+    print(f"{red_color}{text}{reset_color}")
+
 
 def main():
 
+    print_red(
+        "WARNING: CURRENTLY ONLY SUPPORTS PRICES LISTED ON FIRST PAGE OF RECEIPT!")
     print('Please input receipt file path:')
     print('(If in the same folder as this script, simply enter file name)')
     file_path = input()
 
     names, prices = snabbgross_extract(file_path)
     output_to_csv(names, prices)
+    print('Printing prices..')
+
 
 main()
