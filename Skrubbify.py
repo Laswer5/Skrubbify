@@ -10,7 +10,7 @@ import pdfplumber as pdf
 from math import ceil
 
 
-def read_pdf(pdf_path: str) -> str:
+def read_pdf(pdf_path):
     """
     Reads the receipt PDF-file.
 
@@ -39,7 +39,7 @@ def read_pdf(pdf_path: str) -> str:
         return text
 
 
-def separate_name_amount_price(pdf_text) -> tuple[str, str, str]:
+def separate_name_amount_price(pdf_text):
     """
     Splits each string line in the receipt and returns the 
     name, amount, and price, of each item in the receipt.
@@ -69,7 +69,7 @@ def separate_name_amount_price(pdf_text) -> tuple[str, str, str]:
     return names, amount, prices
 
 
-def convert_to_num(str_arr) -> float:
+def convert_to_num(str_arr):
     """
     Converts string numbers to numerical value.
     Also replaces ',' with '.' as the ceil() function does not
@@ -94,7 +94,7 @@ def convert_to_num(str_arr) -> float:
     return num_arr
 
 
-def bootleg_ceil(number: float) -> int:
+def bootleg_ceil(number):
     """
     Rounds to closest integer, with weighting by the 'skrubben-bankroll' variable,
     that deals with prices very close but larger than the nearest integer.
@@ -132,7 +132,7 @@ def filter_special_prices(pdf_data):
     return filtered_names, filtered_amounts, filtered_prices
 
 
-def snabbgross_extract(pdf_path: str) -> tuple[str, int]:
+def snabbgross_extract(pdf_path):
     """
     Calculates prices for each snabbgross items using the functions
     above.
@@ -170,7 +170,7 @@ def snabbgross_extract(pdf_path: str) -> tuple[str, int]:
     return calc_name, calc_price
 
 
-def output_to_csv(item_names: str, item_prices: int):
+def output_to_csv(item_names, item_prices):
     """
     Writes item name and price to a .csv file
 
@@ -187,7 +187,7 @@ def output_to_csv(item_names: str, item_prices: int):
                        "|" + "   " + str(item_prices[x]))
 
 
-def print_red(text: str):
+def print_red(text):
     red_color = "\033[31m"  # ANSI escape code for red text
     reset_color = "\033[0m"  # ANSI escape code for resetting the color
     print(f"{red_color}{text}{reset_color}")
