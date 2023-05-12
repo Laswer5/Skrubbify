@@ -164,6 +164,7 @@ def snabbgross_extract(pdf_path: str) -> tuple[str, int]:
         else:
             i = i + 1
 
+        price = price + 2
         calc_price.append(price)
 
     return calc_name, calc_price
